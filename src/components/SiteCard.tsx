@@ -8,7 +8,6 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   Card,
   CardContent,
-  CardActionArea,
   Typography,
   Skeleton,
   IconButton,
@@ -97,7 +96,7 @@ const SiteCard = memo(function SiteCard({
         transition: 'transform 0.3s ease-in-out',
         ...(!isEditMode && {
           '&:hover': {
-            transform: 'translateY(-4px)',
+            transform: 'translateY(-6px) scale(1.02)',
           },
         }),
       }}
@@ -108,13 +107,15 @@ const SiteCard = memo(function SiteCard({
           display: 'flex',
           flexDirection: 'column',
           borderRadius: 3,
-          transition: 'box-shadow 0.3s ease-in-out',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           border: '1px solid',
           borderColor: 'divider',
           boxShadow: isDragging ? 8 : 2,
           '&:hover': !isEditMode
             ? {
-                boxShadow: 5,
+                boxShadow: '0 10px 20px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08)',
+                borderColor: 'primary.main',
+                transform: 'translateY(-2px)',
               }
             : {},
           overflow: 'hidden',
@@ -214,7 +215,14 @@ const SiteCard = memo(function SiteCard({
             </Typography>
           </Box>
         ) : (
-          <CardActionArea onClick={handleCardClick} sx={{ height: '100%' }}>
+          <Box
+            sx={{
+              height: '100%',
+              position: 'relative',
+              cursor: 'pointer',
+            }}
+            onClick={handleCardClick}
+          >
             <CardContent
               sx={{
                 position: 'relative',
@@ -301,33 +309,34 @@ const SiteCard = memo(function SiteCard({
               >
                 {site.description || '暂无描述'}
               </Typography>
-
-              {/* 设置按钮 - 只在编辑模式显示 */}
-              {viewMode === 'edit' && (
-                <IconButton
-                  size='small'
-                  sx={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    bgcolor: 'action.hover',
-                    opacity: 0,
-                    transition: 'opacity 0.2s',
-                    '&:hover': {
-                      bgcolor: 'action.selected',
-                    },
-                    '.MuiCardActionArea-root:hover &': {
-                      opacity: 1,
-                    },
-                  }}
-                  onClick={handleSettingsClick}
-                  aria-label='网站设置'
-                >
-                  <SettingsIcon fontSize='small' />
-                </IconButton>
-              )}
             </CardContent>
-          </CardActionArea>
+            
+            {/* 设置按钮 - 只在编辑模式显示，放在CardContent外部 */}
+            {viewMode === 'edit' && (
+              <IconButton
+                size='small'
+                sx={{
+                  position: 'absolute',
+                  top: 8,
+                  right: 8,
+                  bgcolor: 'action.hover',
+                  opacity: 0,
+                  transition: 'opacity 0.2s',
+                  '&:hover': {
+                    bgcolor: 'action.selected',
+                  },
+                  '&:hover, .MuiCard-root:hover &': {
+                    opacity: 1,
+                  },
+                  zIndex: 1,
+                }}
+                onClick={handleSettingsClick}
+                aria-label='网站设置'
+              >
+                <SettingsIcon fontSize='small' />
+              </IconButton>
+            )}
+          </Box>
         )}
       </Card>
     </Box>

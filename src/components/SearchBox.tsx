@@ -358,3 +358,4 @@ const SearchBox: React.FC<SearchBoxProps> = ({ groups, sites, onInternalResultCl
 };
 
 export default SearchBox;
+

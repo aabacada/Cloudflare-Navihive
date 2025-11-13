@@ -33,10 +33,6 @@ export default function SortableGroupItem({ id, group }: SortableGroupItemProps)
         boxShadow: isDragging ? 8 : 2,
         cursor: 'grab',
         '&:active': { cursor: 'grabbing' },
-        '&:hover': {
-          borderColor: 'divider',
-          boxShadow: 6,
-        },
         ...(isDragging && {
           outline: '2px solid',
           outlineColor: 'primary.main',
@@ -70,4 +66,4 @@ export default function SortableGroupItem({ id, group }: SortableGroupItemProps)
       </Box>
     </Paper>
   );
-}
+}
