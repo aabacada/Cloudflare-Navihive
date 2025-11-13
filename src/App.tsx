@@ -7,6 +7,7 @@ import ThemeToggle from './components/ThemeToggle';
 import GroupCard from './components/GroupCard';
 import LoginForm from './components/LoginForm';
 import SearchBox from './components/SearchBox';
+import GroupNavigation from './components/GroupNavigation';
 import { sanitizeCSS, isSecureUrl, extractDomain } from './utils/url';
 import { SearchResultItem } from './utils/search';
 import './App.css';
@@ -78,7 +79,7 @@ const useRealApi = import.meta.env.VITE_USE_REAL_API === 'true';
 const api =
   isDevEnvironment && !useRealApi
     ? new MockNavigationClient()
-    : new NavigationClient(isDevEnvironment ? 'http://localhost:8788/api' : '/api');
+    : new NavigationClient(isDevEnvironment ? '/api' : '/api');
 
 // 排序模式枚举
 enum SortMode {
@@ -199,6 +200,12 @@ function App() {
   // 错误提示框状态
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'error' | 'warning' | 'info'>('info');
+
+  // 导航条固定状态
+  const [isNavPinned, setIsNavPinned] = useState(false);
+  // 最近点击的分组ID状态
+  const [lastClickedGroupId, setLastClickedGroupId] = useState<number | null>(null);
   // 导入结果提示框状态
   const [importResultOpen, setImportResultOpen] = useState(false);
   const [importResultMessage, setImportResultMessage] = useState('');
@@ -528,6 +535,26 @@ function App() {
   const cancelSort = () => {
     setSortMode(SortMode.None);
     setCurrentSortingGroupId(null);
+  };
+
+  // 处理导航条分组点击
+  const handleNavGroupClick = (groupId: number) => {
+    setLastClickedGroupId(groupId);
+    
+    // 如果导航条处于固定状态，直接滚动到对应分组位置，不改变分组顺序
+    if (isNavPinned) {
+      const element = document.getElementById(`group-${groupId}`);
+      if (element) {
+        const offset = 20; // 固定偏移量
+        const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+        const offsetPosition = elementPosition - offset;
+
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+    }
   };
 
   // 处理拖拽结束事件
@@ -1128,15 +1155,15 @@ function App() {
                           <ListItemText>导入数据</ListItemText>
                         </MenuItem>
                         {isAuthenticated && (
-                          <>
-                            <Divider />
-                            <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
+                          [
+                            <Divider key="divider" />,
+                            <MenuItem key="logout" onClick={handleLogout} sx={{ color: 'error.main' }}>
                               <ListItemIcon sx={{ color: 'error.main' }}>
                                 <LogoutIcon fontSize='small' />
                               </ListItemIcon>
                               <ListItemText>退出登录</ListItemText>
                             </MenuItem>
-                          </>
+                          ]
                         )}
                       </Menu>
                     </>
@@ -1155,7 +1182,7 @@ function App() {
               return null;
             }
 
-            // 如果是访客模式，检查访客是否可用搜索框
+            // 如果是访客模式，检查访客是否可以使用搜索框
             if (viewMode === 'readonly') {
               const guestEnabled = configs['site.searchBoxGuestEnabled'] === 'true';
               if (!guestEnabled) {
@@ -1204,58 +1231,91 @@ function App() {
           )}
 
           {!loading && !error && (
-            <Box
-              sx={{
-                '& > *': { mb: 5 },
-                minHeight: '100px',
-              }}
-            >
-              {sortMode === SortMode.GroupSort ? (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 3,
+              // 确保容器宽度不会因子元素状态变化而改变
+              width: '100%',
+              // 防止内容溢出
+              overflow: 'hidden',
+              // 改为flex-end确保内容右对齐
+              justifyContent: 'flex-end'
+            }}>
+              {/* 左侧导航栏 */}
+              <GroupNavigation 
+                groups={groups} 
+                isPinned={isNavPinned}
+                onPinChange={setIsNavPinned}
+                onGroupClick={handleNavGroupClick} // 添加分组点击回调
+              />
+              
+              {/* 右侧内容区域 */}
+              <Box sx={{ 
+                // 移除flex: 1，使用固定宽度确保内容区域不会变宽
+                width: { xs: '100%', md: 'calc(100% - 150px)' }, // 调整宽度，减去导航条的宽度，在移动端保持全宽
+                // 添加最大宽度限制，防止内容区域变宽
+                maxWidth: { xs: '100%', md: 'calc(100% - 150px)' },
+                // 添加最小宽度限制，确保内容区域不会过小
+                minWidth: { xs: '100%', md: 'calc(100% - 150px)' },
+                // 确保内容区域不会因导航条状态变化而改变宽度
+                boxSizing: 'border-box',
+                // 添加overflow: hidden防止内容溢出
+                overflow: 'hidden'
+              }}>
+                <Box
+                  sx={{
+                    '& > *': { mb: 5 },
+                    minHeight: '100px',
+                  }}
                 >
-                  <SortableContext
-                    items={groups.map((group) => group.id.toString())}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <Stack
-                      spacing={2}
-                      sx={{
-                        '& > *': {
-                          transition: 'none',
-                        },
-                      }}
+                  {sortMode === SortMode.GroupSort ? (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
                     >
+                      <SortableContext
+                        items={groups.map((group) => group.id.toString())}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <Stack
+                          spacing={2}
+                          sx={{
+                            '& > *': {
+                              transition: 'none',
+                            },
+                          }}
+                        >
+                          {groups.map((group) => (
+                            <SortableGroupItem key={group.id} id={group.id.toString()} group={group} />
+                          ))}
+                        </Stack>
+                      </SortableContext>
+                    </DndContext>
+                  ) : (
+                    <Stack spacing={5}>
                       {groups.map((group) => (
-                        <SortableGroupItem key={group.id} id={group.id.toString()} group={group} />
+                        <Box key={`group-${group.id}`} id={`group-${group.id}`}>
+                          <GroupCard
+                            group={group}
+                            sortMode={sortMode === SortMode.None ? 'None' : 'SiteSort'}
+                            currentSortingGroupId={currentSortingGroupId}
+                            viewMode={viewMode}
+                            onUpdate={handleSiteUpdate}
+                            onDelete={handleSiteDelete}
+                            onSaveSiteOrder={handleSaveSiteOrder}
+                            onStartSiteSort={startSiteSort}
+                            onAddSite={handleOpenAddSite}
+                            onUpdateGroup={handleGroupUpdate}
+                            onDeleteGroup={handleGroupDelete}
+                            configs={configs}
+                          />
+                        </Box>
                       ))}
                     </Stack>
-                  </SortableContext>
-                </DndContext>
-              ) : (
-                <Stack spacing={5}>
-                  {groups.map((group) => (
-                    <Box key={`group-${group.id}`} id={`group-${group.id}`}>
-                      <GroupCard
-                        group={group}
-                        sortMode={sortMode === SortMode.None ? 'None' : 'SiteSort'}
-                        currentSortingGroupId={currentSortingGroupId}
-                        viewMode={viewMode}
-                        onUpdate={handleSiteUpdate}
-                        onDelete={handleSiteDelete}
-                        onSaveSiteOrder={handleSaveSiteOrder}
-                        onStartSiteSort={startSiteSort}
-                        onAddSite={handleOpenAddSite}
-                        onUpdateGroup={handleGroupUpdate}
-                        onDeleteGroup={handleGroupDelete}
-                        configs={configs}
-                      />
-                    </Box>
-                  ))}
-                </Stack>
-              )}
+                  )}
+                </Box>
+              </Box>
             </Box>
           )}
 
